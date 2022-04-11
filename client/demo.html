@@ -1,0 +1,203 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>LeNet手写数字识别Demo</title>
+<style type="text/css">
+	canvas {
+			border: 1px blue solid; 
+	}
+	.overLoading {
+			display: none;
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: #f5f5f5;
+			opacity:0.5;
+			z-index: 1000;
+	}
+	.layoutLoading {
+		display: none;
+		position: absolute;
+		top: 40%;
+		left: 40%;
+		width: 20%;
+		height: 20%;
+		z-index: 1001;
+		text-align:center;
+	}
+	</style>
+</head>
+<!--<script src="./JS/require.js"></script>-->
+<script src="./JS/jquery-3.1.1/dist/jquery.js"></script>
+<body>
+<div id="over" class="overLoading"></div>
+<div id="layout" class="layoutLoading"><img src="./src/loading.gif" /></div>
+<div>
+  <canvas id="canvas" width="280" height="280" style="margin-bottom: 10px;"></canvas>
+  <br>
+  <div>
+  <a>结果为：</a><input name="txt" type="text" id = "result"/>
+  </div>
+</div>
+<div>
+<input value="提交" type="button" id = "submit" style="margin-left: 300px;"/>
+&nbsp;&nbsp;&nbsp;
+<input value="清除" type="button" id = "cls"/>
+</div>
+</body>
+<script type="text/javascript">
+
+var isDown = false;
+var points = [];
+var beginPoint = null;
+const canvas = document.querySelector('#canvas');
+const ctx = canvas.getContext('2d');
+ 
+// 设置线条颜色
+ctx.strokeStyle = 'red';
+ctx.lineWidth = 40;
+ctx.lineJoin = 'round';
+ctx.lineCap = 'round';
+ 
+canvas.addEventListener('mousedown', down, false);
+canvas.addEventListener('mousemove', move, false);
+canvas.addEventListener('mouseup', up, false);
+canvas.addEventListener('mouseout', up, false);
+ 
+function down(evt) {
+	isDown = true;
+	const { x, y } = getPos(evt);
+	points.push({x, y});
+	beginPoint = {x, y};
+}
+ 
+function move(evt) {
+	if (!isDown) return;
+ 
+	const { x, y } = getPos(evt);
+	points.push({x, y});
+ 
+	if (points.length > 3) {
+		const lastTwoPoints = points.slice(-2);
+		const controlPoint = lastTwoPoints[0];
+		const endPoint = {
+			x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
+			y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
+		}
+		drawLine(beginPoint, controlPoint, endPoint);
+		beginPoint = endPoint;
+	}
+}
+ 
+function up(evt) {
+	if (!isDown) return;
+	const { x, y } = getPos(evt);
+	points.push({x, y});
+ 
+	if (points.length > 3) {
+		const lastTwoPoints = points.slice(-2);
+		const controlPoint = lastTwoPoints[0];
+		const endPoint = lastTwoPoints[1];
+		drawLine(beginPoint, controlPoint, endPoint);
+	}
+	beginPoint = null;
+	isDown = false;
+	points = [];
+}
+ 
+function getPos(evt) {
+	return {
+		x: evt.clientX,
+		y: evt.clientY
+	}
+}
+ 
+function drawLine(beginPoint, controlPoint, endPoint) {
+	ctx.beginPath();
+	ctx.moveTo(beginPoint.x, beginPoint.y);
+	ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
+	ctx.stroke();
+	ctx.closePath();
+}
+function showLoading(show){
+	if(show)
+	{
+		document.getElementById("over").style.display = "block";
+		document.getElementById("layout").style.display = "block";
+	}
+	else
+	{
+		document.getElementById("over").style.display = "none";
+  		document.getElementById("layout").style.display = "none";
+	}
+}
+
+$("#submit").click(function()
+{
+	showLoading(true);
+	var testimg = [];
+	//var senddata = []
+	var imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+	for (var i=0;i<imgData.data.length;i+=4)
+	{
+		testimg[i/4] = imgData.data[i];
+	}
+	console.log(testimg.length);
+	//console.log(testimg);
+	$.post("http://115.159.24.45:8000/hello",{'cd':testimg.toString()},function(data,status){
+		showLoading(false);
+		document.getElementById("result").value = data;
+		console.log(data.length);
+		alert("Data: " + data + "\nStatus: " + status);
+	});
+	//alert("submit success!!");
+});
+
+$("#cls").click(function()
+{
+	var clearimgdata = ctx.createImageData(canvas.width,canvas.height);
+	ctx.putImageData(clearimgdata,0,0);
+	document.getElementById("result").value = '';
+	alert("cls success!!");
+});
+
+/*
+function htmlPost(){
+
+　　var data = ["test","测试"];
+
+　　myPost("url",data);
+
+}
+
+function myPost(url, params)
+{
+	var temp = document.createElement("form");
+	temp.action = url;
+	temp.method = "post";
+	temp.style.display = "none";
+	for (var x in params) 
+	{
+	var opt = document.createElement("textarea");
+	opt.test = x;
+	temp.appendChild(opt);
+	}
+	document.body.appendChild(temp);
+	temp.submit();
+	return temp;
+}
+
+function submit()
+{
+	var imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+	console.log(imgData);
+	//alert("success!!");
+}
+*/
+</script>
+<body>
+</body>
+</html>
